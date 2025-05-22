@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Terrain
   m_EditorClassIdentifier: 
   _worldSize: {x: 10240, y: 2048, z: 10240}
-  _albedoMap: {fileID: 10309, guid: 0000000000000000f000000000000000, type: 0}
+  _albedoMap: {fileID: 2800000, guid: eec27faf325630a4982e2e5862107b03, type: 3}
   _heightMap: {fileID: 2800000, guid: 37823e59dcdfc489cb98d1627032c3c0, type: 3}
   _normalMap: {fileID: 2800000, guid: 1bf14e86bf0f442d283dfc5c48e452ba, type: 3}
   _minMaxHeightMaps:

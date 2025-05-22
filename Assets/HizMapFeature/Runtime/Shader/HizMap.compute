@@ -1,57 +1,98 @@
-
-
 #pragma kernel Blit
-#pragma kernel CSMain
-
+#pragma kernel BuildHizMap
 #pragma multi_compile_local __ _REVERSE_Z
-#pragma multi_compile_local __ _PING_PONG_COPY
 
-Texture2D<float4> InTex;
+Texture2D InTex;
 RWTexture2D<float4> MipCopyTex;
-RWTexture2D<float4> MipTex;
-
+uniform int _HizMipCount;
 uniform float2 _SrcTexSize;
 uniform float2 _DstTexSize;
-uniform uint _Mip;
+groupshared float hiz_0[16][16];
+groupshared float hiz_1[8][8];
+groupshared float hiz_2[4][4];
+groupshared float hiz_3[2][2];
+RWTexture2D<float> HIZ_MAP_Mip0;
+RWTexture2D<float> HIZ_MAP_Mip1;
+RWTexture2D<float> HIZ_MAP_Mip2;
+RWTexture2D<float> HIZ_MAP_Mip3;
 
 [numthreads(8,8,1)]
 void Blit (uint3 id : SV_DispatchThreadID){
 
-    uint2 srcXY = floor(id.xy * _SrcTexSize /_DstTexSize);
-    MipTex[id.xy] = InTex[srcXY];
-    #if _PING_PONG_COPY
+    uint2 srcXY = floor(id.xy * 2 * _SrcTexSize /_DstTexSize);
     MipCopyTex[id.xy] = InTex[srcXY];
+}
+
+float GetHizDepth2X2(float depth0, float depth1, float depth2, float depth3)
+{
+    #if _REVERSE_Z
+    return min(min(depth0, depth1),min(depth2, depth3));
+    #else
+    return max(max(depth0, depth1), max(depth2, depth3));
     #endif
 }
 
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+[numthreads(16, 16, 1)]
+void BuildHizMap(uint3 id : SV_DispatchThreadID, uint3 idInGroup : SV_GroupThreadID)
 {
-    if(id.x < _DstTexSize.x && id.y < _DstTexSize.y){
-        uint2 coord = 2 * id.xy;
-        #if _PING_PONG_COPY
-        float d1 = InTex[coord].r;
-        float d2 = InTex[coord + uint2(1,0)].r;
-        float d3 = InTex[coord + uint2(0,1)].r;
-        float d4 = InTex[coord + uint2(1,1)].r;
-        #else
-        float d1 = InTex.mips[_Mip-1][coord].r;
-        float d2 = InTex.mips[_Mip-1][coord + uint2(1,0)].r;
-        float d3 = InTex.mips[_Mip-1][coord + uint2(0,1)].r;
-        float d4 = InTex.mips[_Mip-1][coord + uint2(1,1)].r;
-        #endif
-        #if  _REVERSE_Z
-        //近大远小
-        float d = min(min(d1,d2),min(d3,d4));
-        #else
-        float d = max(max(d1,d2),max(d3,d4));
-        #endif
+    uint2 srcXY = floor(id.xy * _SrcTexSize /_DstTexSize);
+    float depth = InTex[srcXY];
+    uint2 pix = uint2(idInGroup.x, idInGroup.y);
+    hiz_0[pix.x][pix.y] = depth; //16x16
 
-        MipTex[id.xy] = d;
-        #if _PING_PONG_COPY
-        MipCopyTex[id.xy] = d;
-        #endif
+    GroupMemoryBarrierWithGroupSync();
+    pix = idInGroup.xy >> 1; //8x8
+    uint2 pix0 = pix * 2;
+    uint2 pix1 = pix * 2 + uint2(0, 1);
+    uint2 pix2 = pix * 2 + uint2(1, 0);
+    uint2 pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_0[pix0.x][pix0.y], hiz_0[pix1.x][pix1.y], hiz_0[pix2.x][pix2.y], hiz_0[pix3.x][pix3.y]);
+    hiz_1[pix.x][pix.y] = depth; //8x8
+    HIZ_MAP_Mip0[id.xy] = depth;
+
+    if (_HizMipCount > 2)
+    {
+        return; // 停止
     }
     
+    GroupMemoryBarrierWithGroupSync();
+    pix = idInGroup.xy >> 2; //4x4
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_1[pix0.x][pix0.y], hiz_1[pix1.x][pix1.y], hiz_1[pix2.x][pix2.y], hiz_1[pix3.x][pix3.y]);
+    hiz_2[pix.x][pix.y] = depth; //4x4
+    HIZ_MAP_Mip1[id.xy >> 1] = depth;
+
+    if (_HizMipCount > 1)
+    {
+        return; // 停止
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+    pix = idInGroup.xy >> 3; //2x2
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_2[pix0.x][pix0.y], hiz_2[pix1.x][pix1.y], hiz_2[pix2.x][pix2.y], hiz_2[pix3.x][pix3.y]);
+    hiz_3[pix.x][pix.y] = depth; //2x2
+    HIZ_MAP_Mip2[id.xy >> 2] = depth;
+
+    if (_HizMipCount > 0)
+    {
+        return; // 停止
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+    pix = idInGroup.xy >> 4; //1x1
+    pix0 = pix * 2;
+    pix1 = pix * 2 + uint2(0, 1);
+    pix2 = pix * 2 + uint2(1, 0);
+    pix3 = pix * 2 + uint2(1, 1);
+    depth = GetHizDepth2X2(hiz_3[pix0.x][pix0.y], hiz_3[pix1.x][pix1.y], hiz_3[pix2.x][pix2.y], hiz_3[pix3.x][pix3.y]);
+    HIZ_MAP_Mip3[id.xy >> 3] = depth; //128x128
+    MipCopyTex[id.xy >> 3] = depth;
 }
 

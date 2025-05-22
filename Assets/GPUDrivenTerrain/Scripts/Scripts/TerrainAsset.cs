@@ -42,29 +42,13 @@ namespace GPUDrivenTerrainLearn{
         private Material _boundsDebugMaterial;
 
 
-        public Vector3 worldSize{
-            get{
-                return _worldSize;
-            }
-        }
-        
-        public Texture2D albedoMap{
-            get{
-                return _albedoMap;
-            }
-        }
+        public Vector3 worldSize => _worldSize;
 
-        public Texture2D heightMap{
-            get{
-                return _heightMap;
-            }
-        }
+        public Texture2D albedoMap => _albedoMap;
 
-        public Texture2D normalMap{
-            get{
-                return _normalMap;
-            }
-        }
+        public Texture2D heightMap => _heightMap;
+
+        public Texture2D normalMap => _normalMap;
 
         public RenderTexture quadTreeMap{
             get{
@@ -93,11 +77,7 @@ namespace GPUDrivenTerrainLearn{
             }
         }
 
-        public ComputeShader computeShader{
-            get{
-                return _terrainCompute;
-            }
-        }
+        public ComputeShader computeShader => _terrainCompute;
 
         private static Mesh _patchMesh;
 
