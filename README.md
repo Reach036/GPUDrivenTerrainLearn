@@ -11,3 +11,5 @@
 
 5.使用优化的hiz剔除，对于投影后aabb长宽比大于2的Bounds，拆分为两个进行更精细的剔除，参考自: https://zhuanlan.zhihu.com/p/540479878
 ![11](https://github.com/user-attachments/assets/4a1dcc98-984e-4d2b-95e6-42b40c37f221)
+
+版本: Unity2022.3
