@@ -16,8 +16,6 @@
 
 所有的计算都由GPU实现，且不存在CPU数据回读。
 
-文章会引用PPT中的一些图片，在实现上大致应该与PPT所述相同，在细节上可能会有些出入，请自行甄别。
-
 先放一个Preiview:
 
 <img src=".imgs/Preview.gif">
